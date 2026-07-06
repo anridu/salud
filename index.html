@@ -358,11 +358,23 @@ $("fab").onclick = ()=>openModal(currentType);
 $("helpBtn").onclick = ()=>{ const h=$("helpbox"); h.style.display = h.style.display==="none"?"block":"none"; };
 
 // ------- import / export -------
+function normType(s){
+  s = s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+  if(METRICS[s] || s==="sys" || s==="dia") return s;
+  if(s.includes("sistolic") || s.includes("systolic")) return "sys";
+  if(s.includes("diastolic")) return "dia";
+  if(s.includes("cardiac") || s.includes("heart")) return "pulso";
+  if(s.includes("oxigeno") || s.includes("oxygen")) return "spo2";
+  if(s.includes("masa") || s.includes("weight") || s.includes("body mass")) return "peso";
+  if(s.includes("paso") || s.includes("step")) return "pasos";
+  if(s.includes("sueno") || s.includes("sleep")) return "sueno";
+  return null;
+}
 function parseLine(line){
   const p = line.split(",").map(s=>s.trim());
   if(p.length<3) return null;
-  const t = p[0].toLowerCase();
-  if(!METRICS[t] && t!=="sys" && t!=="dia") return null;
+  const t = normType(p[0]);
+  if(!t) return null;
   const d = p[1].replace(" ","T");
   if(isNaN(Date.parse(d))) return null;
   const e = {t, d:d.length===10?d+"T12:00":d, a:parseFloat(p[2].replace(",","."))};
