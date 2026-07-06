@@ -143,8 +143,9 @@ main{padding:4px 16px calc(40px + env(safe-area-inset-bottom))}
   <main>
     <div class="cards" id="cards"></div>
     <div class="tools">
+      <button id="syncBtn">Sincronizar</button>
       <button id="exportBtn">Exportar datos</button>
-      <button id="helpBtn">Conectar con Apple Salud</button>
+      <button id="helpBtn">Ayuda</button>
     </div>
     <div class="helpbox" id="helpbox" style="display:none">
       <b style="color:var(--text)">Cómo traer datos de Apple Salud (Watch D2):</b><br>
@@ -155,7 +156,10 @@ main{padding:4px 16px calc(40px + env(safe-area-inset-bottom))}
       &nbsp;&nbsp;<code>pulso,fecha,64</code> · <code>spo2,fecha,97</code> · <code>peso,fecha,81.4</code><br>
       &nbsp;&nbsp;<code>sueno,fecha,7.5</code> · <code>pasos,fecha,9200</code><br>
       &nbsp;&nbsp;Última acción: "Copiar al portapapeles"<br>
-      3. Ejecuta el atajo, abre esta app y pulsa <b>Importar</b>.
+      3. Ejecuta el atajo, abre esta app y pulsa <b>Importar</b>.<br><br>
+      <b style="color:var(--text)">Sincronización automática:</b> si tu atajo sube los datos al repo
+      privado <code>salud-datos</code> de GitHub, el botón <b>Sincronizar</b> los baja
+      (y también al abrir la app). Mantén pulsado <b>Sincronizar</b> para cambiar el token.
     </div>
   </main>
 </div>
@@ -379,7 +383,7 @@ function mergeBP(items){
   for(const k in bp){ const e = bp[k]; if(e.a!=null && e.b!=null) rest.push(e); }
   return rest;
 }
-function importText(text){
+function importText(text, silent){
   let items = [];
   try{
     const j = JSON.parse(text);
@@ -397,8 +401,42 @@ function importText(text){
     added++;
   }
   if(added){ save(); renderHome(); }
-  toast(added ? `Importados ${added} registros ✓` : "Nada nuevo que importar");
+  if(added) toast(`Importados ${added} registros ✓`);
+  else if(!silent) toast("Nada nuevo que importar");
 }
+
+// ------- sincronizacion con GitHub (repo privado salud-datos) -------
+const REPO_URL = "https://api.github.com/repos/anridu/salud-datos/contents/datos.json";
+async function syncCloud(silent){
+  const tok = localStorage.getItem("gh-token");
+  if(!tok){ if(!silent) configSync(); return; }
+  if(!silent) toast("Sincronizando...");
+  try{
+    const r = await fetch(REPO_URL, {cache:"no-store",
+      headers:{Authorization:"Bearer "+tok, Accept:"application/vnd.github+json"}});
+    if(r.status===401 || r.status===403){ localStorage.removeItem("gh-token"); toast("Token no válido o caducado — pulsa Sincronizar para poner otro"); return; }
+    if(!r.ok) throw 0;
+    const j = await r.json();
+    const text = decodeURIComponent(escape(atob(j.content.replace(/\s/g,""))));
+    if(text.trim()) importText(text.trim(), silent);
+    else if(!silent) toast("La nube está vacía todavía");
+  }catch{ if(!silent) toast("No se pudo sincronizar (¿sin conexión?)"); }
+}
+function configSync(){
+  const cur = localStorage.getItem("gh-token");
+  const tok = prompt(cur ? "Token actual guardado. Pega uno nuevo para cambiarlo (o deja vacío y Cancelar):"
+    : "Pega tu token de GitHub (github_pat_...):");
+  if(tok && tok.trim().length>20){
+    localStorage.setItem("gh-token", tok.trim());
+    toast("Token guardado ✓");
+    syncCloud(false);
+  }
+}
+$("syncBtn").onclick = ()=>{
+  localStorage.getItem("gh-token") ? syncCloud(false) : configSync();
+};
+$("syncBtn").addEventListener("contextmenu", e=>{ e.preventDefault(); configSync(); });
+syncCloud(true);
 $("importBtn").onclick = async ()=>{
   let text = "";
   try{ text = await navigator.clipboard.readText(); }catch{}
