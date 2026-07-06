@@ -379,6 +379,7 @@ function parseLine(line){
   if(isNaN(Date.parse(d))) return null;
   const e = {t, d:d.length===10?d+"T12:00":d, a:parseFloat(p[2].replace(",","."))};
   if(isNaN(e.a)) return null;
+  if(t==="spo2" && e.a<=1) e.a = Math.round(e.a*100); // Salud guarda SpO2 como fraccion 0-1
   if(t==="tension"){ e.b = parseFloat(p[3]); if(isNaN(e.b)) return null; }
   return e;
 }
@@ -395,17 +396,39 @@ function mergeBP(items){
   for(const k in bp){ const e = bp[k]; if(e.a!=null && e.b!=null) rest.push(e); }
   return rest;
 }
+// pasos: suma diaria; pulso/spo2: media diaria (el reloj genera cientos de muestras al dia)
+function aggregate(items){
+  const daily = {}, out = [];
+  for(const it of items){
+    if(it.t==="pasos" || it.t==="pulso" || it.t==="spo2"){
+      const k = it.t+"|"+it.d.slice(0,10);
+      (daily[k] = daily[k] || []).push(it);
+    } else out.push(it);
+  }
+  for(const k in daily){
+    const g = daily[k], t = g[0].t;
+    const sum = g.reduce((a,x)=>a+x.a,0);
+    out.push({t, d:g[0].d.slice(0,10)+"T12:00",
+      a: t==="pasos" ? Math.round(sum) : Math.round(sum/g.length), agg:true});
+  }
+  return out;
+}
 function importText(text, silent){
   let items = [];
   try{
     const j = JSON.parse(text);
     items = (Array.isArray(j)?j:[]).filter(x=>x && METRICS[x.t] && x.d && x.a!=null);
   }catch{
-    items = mergeBP(text.split(/\r?\n/).map(parseLine).filter(Boolean));
+    items = aggregate(mergeBP(text.split(/\r?\n/).map(parseLine).filter(Boolean)));
   }
   const existing = new Set(entries.map(e=>e.t+"|"+e.d.slice(0,16)));
   let added = 0;
   for(const it of items){
+    if(it.agg){
+      delete it.agg;
+      const ex = entries.find(e=>e.t===it.t && e.d.slice(0,10)===it.d.slice(0,10));
+      if(ex){ if(ex.a!==it.a){ ex.a = it.a; added++; save(); } continue; }
+    }
     const k = it.t+"|"+it.d.slice(0,16);
     if(existing.has(k)) continue;
     existing.add(k);
