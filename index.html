@@ -149,14 +149,13 @@ main{padding:4px 16px calc(40px + env(safe-area-inset-bottom))}
     <div class="helpbox" id="helpbox" style="display:none">
       <b style="color:var(--text)">Cómo traer datos de Apple Salud (Watch D2):</b><br>
       1. En <b>Huawei Health</b> (iPhone): Yo → Ajustes → activar sincronización con <b>Apple Salud</b>.<br>
-      2. Abre la app <b>Atajos</b> del iPhone → nuevo atajo:<br>
-      &nbsp;&nbsp;• Acción "Buscar muestras de salud" (ej: presión sistólica, hoy)<br>
-      &nbsp;&nbsp;• Acción "Texto": una línea por dato con formato:<br>
-      &nbsp;&nbsp;&nbsp;&nbsp;<code>tension,2026-07-06 08:30,128,82</code><br>
-      &nbsp;&nbsp;&nbsp;&nbsp;<code>pulso,2026-07-06 08:30,64</code><br>
-      &nbsp;&nbsp;&nbsp;&nbsp;<code>peso,2026-07-06,81.4</code> · <code>spo2,...,97</code> · <code>sueno,...,7.5</code> · <code>pasos,...,9200</code><br>
-      &nbsp;&nbsp;• Acción "Copiar al portapapeles"<br>
-      3. Ejecuta el atajo y aquí pulsa <b>Importar</b> → pegar.
+      2. Abre la app <b>Atajos</b> del iPhone → nuevo atajo con acciones "Buscar muestras de salud"<br>
+      y construye una línea de texto por dato (fecha formato <code>2026-07-06 08:30</code>):<br>
+      &nbsp;&nbsp;<code>sys,fecha,128</code> · <code>dia,fecha,82</code> (se emparejan solos en tensión)<br>
+      &nbsp;&nbsp;<code>pulso,fecha,64</code> · <code>spo2,fecha,97</code> · <code>peso,fecha,81.4</code><br>
+      &nbsp;&nbsp;<code>sueno,fecha,7.5</code> · <code>pasos,fecha,9200</code><br>
+      &nbsp;&nbsp;Última acción: "Copiar al portapapeles"<br>
+      3. Ejecuta el atajo, abre esta app y pulsa <b>Importar</b>.
     </div>
   </main>
 </div>
@@ -357,13 +356,28 @@ $("helpBtn").onclick = ()=>{ const h=$("helpbox"); h.style.display = h.style.dis
 // ------- import / export -------
 function parseLine(line){
   const p = line.split(",").map(s=>s.trim());
-  if(p.length<3 || !METRICS[p[0]]) return null;
+  if(p.length<3) return null;
+  const t = p[0].toLowerCase();
+  if(!METRICS[t] && t!=="sys" && t!=="dia") return null;
   const d = p[1].replace(" ","T");
   if(isNaN(Date.parse(d))) return null;
-  const e = {t:p[0], d:d.length===10?d+"T12:00":d, a:parseFloat(p[2])};
+  const e = {t, d:d.length===10?d+"T12:00":d, a:parseFloat(p[2].replace(",","."))};
   if(isNaN(e.a)) return null;
-  if(p[0]==="tension"){ e.b = parseFloat(p[3]); if(isNaN(e.b)) return null; }
+  if(t==="tension"){ e.b = parseFloat(p[3]); if(isNaN(e.b)) return null; }
   return e;
+}
+// empareja lineas sys/dia con la misma fecha-hora en entradas de tension
+function mergeBP(items){
+  const bp = {}, rest = [];
+  for(const it of items){
+    if(it.t==="sys" || it.t==="dia"){
+      const k = it.d.slice(0,16);
+      bp[k] = bp[k] || {t:"tension", d:it.d};
+      bp[k][it.t==="sys"?"a":"b"] = it.a;
+    } else rest.push(it);
+  }
+  for(const k in bp){ const e = bp[k]; if(e.a!=null && e.b!=null) rest.push(e); }
+  return rest;
 }
 function importText(text){
   let items = [];
@@ -371,7 +385,7 @@ function importText(text){
     const j = JSON.parse(text);
     items = (Array.isArray(j)?j:[]).filter(x=>x && METRICS[x.t] && x.d && x.a!=null);
   }catch{
-    items = text.split(/\r?\n/).map(parseLine).filter(Boolean);
+    items = mergeBP(text.split(/\r?\n/).map(parseLine).filter(Boolean));
   }
   const existing = new Set(entries.map(e=>e.t+"|"+e.d.slice(0,16)));
   let added = 0;
