@@ -359,7 +359,7 @@ $("helpBtn").onclick = ()=>{ const h=$("helpbox"); h.style.display = h.style.dis
 
 // ------- import / export -------
 function normType(s){
-  s = s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim();
+  s = s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
   if(METRICS[s] || s==="sys" || s==="dia") return s;
   if(s.includes("sistolic") || s.includes("systolic")) return "sys";
   if(s.includes("diastolic")) return "dia";
