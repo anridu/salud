@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Salud</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Salud">
+<meta name="theme-color" content="#0d1117">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{
+  --bg:#0d1117; --card:#161b22; --card2:#1f2630; --border:#2d333b;
+  --text:#e6edf3; --muted:#8b949e; --accent:#f85149; --blue:#58a6ff;
+  --green:#3fb950; --orange:#f0883e; --red:#f85149; --purple:#bc8cff;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  overscroll-behavior:none;
+}
+header{
+  padding:20px 20px 12px; display:flex; justify-content:space-between; align-items:center;
+  position:sticky; top:0; background:var(--bg); z-index:10;
+}
+header h1{font-size:26px; font-weight:700; display:flex; align-items:center; gap:8px}
+header .date{color:var(--muted); font-size:14px; margin-top:2px; text-transform:capitalize}
+header button{
+  background:var(--card2); border:1px solid var(--border); color:var(--text);
+  border-radius:12px; padding:9px 12px; font-size:14px; cursor:pointer;
+}
+main{padding:4px 16px calc(40px + env(safe-area-inset-bottom))}
+.cards{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.mcard{
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  padding:14px; cursor:pointer;
+}
+.mcard.wide{grid-column:1 / -1}
+.mcard .top{display:flex; align-items:center; gap:8px; margin-bottom:8px}
+.mcard .top .emoji{font-size:20px}
+.mcard .top .name{font-size:13px; color:var(--muted); font-weight:600}
+.mcard .val{font-size:26px; font-weight:700; line-height:1.1}
+.mcard .val small{font-size:13px; color:var(--muted); font-weight:400}
+.mcard .when{font-size:11px; color:var(--muted); margin-top:4px}
+.mcard .empty-val{font-size:15px; color:var(--muted); padding:6px 0}
+.mcard svg{width:100%; height:34px; margin-top:8px}
+.badge{display:inline-block; font-size:11px; padding:2px 8px; border-radius:8px; margin-top:5px; font-weight:600}
+.b-green{background:rgba(63,185,80,.15); color:var(--green)}
+.b-orange{background:rgba(240,136,62,.15); color:var(--orange)}
+.b-red{background:rgba(248,81,73,.18); color:var(--red)}
+.tools{margin-top:18px; display:flex; gap:10px}
+.tools button{
+  flex:1; background:var(--card); border:1px solid var(--border); color:var(--muted);
+  border-radius:12px; padding:12px; font-size:13px; cursor:pointer;
+}
+/* detail */
+#detail{display:none}
+#detail .dhead{display:flex; align-items:center; gap:10px; padding:16px 16px 6px}
+#detail .dhead .back{
+  background:var(--card2); border:1px solid var(--border); color:var(--text);
+  width:38px; height:38px; border-radius:50%; font-size:18px; cursor:pointer;
+}
+#detail .dhead h2{font-size:21px}
+.chartbox{
+  background:var(--card); border:1px solid var(--border); border-radius:16px;
+  margin:10px 16px; padding:14px;
+}
+.chartbox .cb-title{font-size:12px; color:var(--muted); margin-bottom:8px}
+.chartbox svg{width:100%; height:160px}
+.legend{display:flex; gap:14px; margin-top:8px; font-size:12px; color:var(--muted)}
+.legend .sw{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px}
+.hist{margin:6px 16px}
+.hentry{
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:11px 14px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;
+}
+.hentry .hval{font-size:17px; font-weight:600}
+.hentry .hdate{font-size:12px; color:var(--muted); margin-top:2px}
+.hentry .hdel{background:none; border:none; color:var(--muted); font-size:17px; cursor:pointer; padding:6px}
+.addfab{
+  position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom));
+  width:58px; height:58px; border-radius:50%; border:none; background:var(--blue);
+  color:#fff; font-size:30px; cursor:pointer; z-index:50;
+  box-shadow:0 4px 14px rgba(0,0,0,.4);
+  display:flex; align-items:center; justify-content:center;
+}
+/* modal */
+#overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.6); display:none;
+  align-items:flex-end; z-index:100;
+}
+#overlay.show{display:flex}
+#modal{
+  background:var(--card); width:100%; border-radius:20px 20px 0 0;
+  padding:24px 20px calc(24px + env(safe-area-inset-bottom));
+  max-height:85vh; overflow-y:auto;
+}
+#modal h2{font-size:20px; margin-bottom:14px}
+#modal label{display:block; font-size:13px; color:var(--muted); margin:12px 0 6px}
+#modal input, #modal select, #modal textarea{
+  width:100%; padding:12px 14px; font-size:17px; border-radius:12px;
+  border:1px solid var(--border); background:var(--bg); color:var(--text); outline:none;
+  font-family:inherit;
+}
+#modal input:focus, #modal textarea:focus{border-color:var(--blue)}
+.fields2{display:flex; gap:10px}
+.fields2 > div{flex:1}
+.modal-btns{display:flex; gap:10px; margin-top:22px}
+.modal-btns button{
+  flex:1; padding:14px; border-radius:12px; border:none; font-size:16px; font-weight:600; cursor:pointer;
+}
+#cancelBtn{background:var(--card2); color:var(--text)}
+#saveBtn{background:var(--blue); color:#fff}
+#toast{
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:calc(100px + env(safe-area-inset-bottom));
+  background:var(--card2); border:1px solid var(--border); color:var(--text);
+  padding:11px 18px; border-radius:14px; font-size:14px; z-index:200;
+  opacity:0; transition:opacity .25s; pointer-events:none; max-width:85%; text-align:center;
+}
+#toast.show{opacity:1}
+.helpbox{
+  background:var(--card); border:1px solid var(--border); border-radius:14px;
+  margin-top:14px; padding:14px; font-size:13px; color:var(--muted); line-height:1.6;
+}
+.helpbox code{background:var(--bg); padding:1px 6px; border-radius:6px; font-size:12px}
+</style>
+</head>
+<body>
+<div id="home">
+  <header>
+    <div>
+      <h1>❤️ Salud</h1>
+      <div class="date" id="todayLabel"></div>
+    </div>
+    <button id="importBtn">Importar</button>
+  </header>
+  <main>
+    <div class="cards" id="cards"></div>
+    <div class="tools">
+      <button id="exportBtn">Exportar datos</button>
+      <button id="helpBtn">Conectar con Apple Salud</button>
+    </div>
+    <div class="helpbox" id="helpbox" style="display:none">
+      <b style="color:var(--text)">Cómo traer datos de Apple Salud (Watch D2):</b><br>
+      1. En <b>Huawei Health</b> (iPhone): Yo → Ajustes → activar sincronización con <b>Apple Salud</b>.<br>
+      2. Abre la app <b>Atajos</b> del iPhone → nuevo atajo:<br>
+      &nbsp;&nbsp;• Acción "Buscar muestras de salud" (ej: presión sistólica, hoy)<br>
+      &nbsp;&nbsp;• Acción "Texto": una línea por dato con formato:<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<code>tension,2026-07-06 08:30,128,82</code><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<code>pulso,2026-07-06 08:30,64</code><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<code>peso,2026-07-06,81.4</code> · <code>spo2,...,97</code> · <code>sueno,...,7.5</code> · <code>pasos,...,9200</code><br>
+      &nbsp;&nbsp;• Acción "Copiar al portapapeles"<br>
+      3. Ejecuta el atajo y aquí pulsa <b>Importar</b> → pegar.
+    </div>
+  </main>
+</div>
+
+<div id="detail">
+  <div class="dhead">
+    <button class="back" id="backBtn">‹</button>
+    <h2 id="dtitle"></h2>
+  </div>
+  <div class="chartbox">
+    <div class="cb-title">ÚLTIMOS 30 DÍAS</div>
+    <svg id="bigchart" preserveAspectRatio="none"></svg>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="hist" id="hist"></div>
+</div>
+
+<button class="addfab" id="fab">+</button>
+
+<div id="overlay">
+  <div id="modal">
+    <h2 id="modalTitle">Nuevo registro</h2>
+    <label>Tipo</label>
+    <select id="typeSel"></select>
+    <label>Fecha y hora</label>
+    <input type="datetime-local" id="dateInput">
+    <div id="valueFields"></div>
+    <div class="modal-btns">
+      <button id="cancelBtn">Cancelar</button>
+      <button id="saveBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const KEY = "salud-v1";
+let entries = JSON.parse(localStorage.getItem(KEY) || "[]");
+let currentType = null;
+
+const METRICS = {
+  tension:{name:"Tensión", emoji:"🩺", unit:"mmHg", color:"#f85149",
+    fields:[{k:"a",label:"Sistólica",ph:"120"},{k:"b",label:"Diastólica",ph:"80"}],
+    fmt:e=>`${e.a}/${e.b}`},
+  pulso:{name:"Pulso", emoji:"❤️", unit:"ppm", color:"#bc8cff",
+    fields:[{k:"a",label:"Pulsaciones",ph:"65"}], fmt:e=>e.a},
+  spo2:{name:"SpO2", emoji:"🫁", unit:"%", color:"#58a6ff",
+    fields:[{k:"a",label:"Oxígeno en sangre",ph:"97"}], fmt:e=>e.a},
+  peso:{name:"Peso", emoji:"⚖️", unit:"kg", color:"#3fb950",
+    fields:[{k:"a",label:"Peso",ph:"80.5",step:"0.1"}], fmt:e=>e.a},
+  sueno:{name:"Sueño", emoji:"😴", unit:"h", color:"#f0883e",
+    fields:[{k:"a",label:"Horas",ph:"7.5",step:"0.1"}], fmt:e=>e.a},
+  pasos:{name:"Pasos", emoji:"👣", unit:"", color:"#8b949e",
+    fields:[{k:"a",label:"Pasos",ph:"8000"}], fmt:e=>Number(e.a).toLocaleString("es-ES")}
+};
+
+const $ = id => document.getElementById(id);
+const save = () => localStorage.setItem(KEY, JSON.stringify(entries));
+const byType = t => entries.filter(e=>e.t===t).sort((x,y)=>x.d.localeCompare(y.d));
+const fmtDate = iso => new Date(iso).toLocaleDateString("es-ES",{day:"numeric",month:"short"}) + " " +
+  new Date(iso).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
+
+function bpBadge(e){
+  if(e.a>=140||e.b>=90) return `<span class="badge b-red">Alta</span>`;
+  if(e.a>=130||e.b>=85) return `<span class="badge b-orange">Elevada</span>`;
+  return `<span class="badge b-green">Normal</span>`;
+}
+
+function sparkline(t){
+  const data = byType(t).slice(-14);
+  if(data.length<2) return "";
+  const m = METRICS[t];
+  const vals = data.map(e=>+e.a);
+  const min = Math.min(...vals), max = Math.max(...vals), r = (max-min)||1;
+  const pts = vals.map((v,i)=>`${(i/(vals.length-1)*100).toFixed(1)},${(30-((v-min)/r*26+2)).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 100 32" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${m.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
+function renderHome(){
+  $("cards").innerHTML = Object.keys(METRICS).map(t=>{
+    const m = METRICS[t], data = byType(t), last = data[data.length-1];
+    const wide = t==="tension" ? "wide" : "";
+    let body;
+    if(!last){
+      body = `<div class="empty-val">Sin datos — toca para añadir</div>`;
+    } else {
+      body = `<div class="val">${m.fmt(last)} <small>${m.unit}</small></div>
+        ${t==="tension"?bpBadge(last):""}
+        <div class="when">${fmtDate(last.d)}</div>${sparkline(t)}`;
+    }
+    return `<div class="mcard ${wide}" data-t="${t}">
+      <div class="top"><span class="emoji">${m.emoji}</span><span class="name">${m.name.toUpperCase()}</span></div>
+      ${body}</div>`;
+  }).join("");
+}
+
+function bigChart(t){
+  const m = METRICS[t];
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-30);
+  const data = byType(t).filter(e=>new Date(e.d)>=cutoff);
+  const svg = $("bigchart");
+  svg.setAttribute("viewBox","0 0 340 160");
+  if(data.length<2){ svg.innerHTML = `<text x="170" y="85" fill="#8b949e" font-size="13" text-anchor="middle">Necesitas al menos 2 registros</text>`; $("legend").innerHTML=""; return; }
+  const series = t==="tension" ? [{k:"a",c:"#f85149",n:"Sistólica"},{k:"b",c:"#58a6ff",n:"Diastólica"}] : [{k:"a",c:m.color,n:m.name}];
+  const all = data.flatMap(e=>series.map(s=>+e[s.k]));
+  const min = Math.min(...all), max = Math.max(...all), r = (max-min)||1;
+  const X = i => 8 + i/(data.length-1)*324;
+  const Y = v => 148 - ((v-min)/r)*130;
+  let out = "";
+  // lineas de referencia
+  [min, (min+max)/2, max].forEach(v=>{
+    out += `<line x1="8" y1="${Y(v)}" x2="332" y2="${Y(v)}" stroke="#2d333b" stroke-width="1"/>
+      <text x="334" y="${Y(v)+4}" fill="#8b949e" font-size="9" text-anchor="end">${Math.round(v)}</text>`;
+  });
+  series.forEach(s=>{
+    const pts = data.map((e,i)=>`${X(i).toFixed(1)},${Y(+e[s.k]).toFixed(1)}`).join(" ");
+    out += `<polyline points="${pts}" fill="none" stroke="${s.c}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    data.forEach((e,i)=>{ out += `<circle cx="${X(i).toFixed(1)}" cy="${Y(+e[s.k]).toFixed(1)}" r="3" fill="${s.c}"/>`; });
+  });
+  svg.innerHTML = out;
+  $("legend").innerHTML = series.map(s=>`<span><span class="sw" style="background:${s.c}"></span>${s.n}</span>`).join("");
+}
+
+function renderDetail(t){
+  currentType = t;
+  const m = METRICS[t];
+  $("dtitle").textContent = m.emoji + " " + m.name;
+  bigChart(t);
+  const data = byType(t).slice().reverse();
+  $("hist").innerHTML = data.length ? data.map(e=>`
+    <div class="hentry">
+      <div>
+        <div class="hval">${m.fmt(e)} <small style="color:var(--muted);font-size:12px">${m.unit}</small> ${t==="tension"?bpBadge(e):""}</div>
+        <div class="hdate">${fmtDate(e.d)}</div>
+      </div>
+      <button class="hdel" data-id="${e.id}">✕</button>
+    </div>`).join("") : `<div style="color:var(--muted);text-align:center;padding:30px">Sin registros todavía</div>`;
+  $("home").style.display = "none";
+  $("detail").style.display = "block";
+  window.scrollTo(0,0);
+}
+
+function goHome(){
+  currentType = null;
+  $("detail").style.display = "none";
+  $("home").style.display = "block";
+  renderHome();
+}
+
+// ------- modal -------
+function openModal(presetType){
+  const sel = $("typeSel");
+  sel.innerHTML = Object.keys(METRICS).map(t=>`<option value="${t}">${METRICS[t].emoji} ${METRICS[t].name}</option>`).join("");
+  if(presetType) sel.value = presetType;
+  const now = new Date(); now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+  $("dateInput").value = now.toISOString().slice(0,16);
+  renderFields();
+  $("overlay").classList.add("show");
+}
+function renderFields(){
+  const m = METRICS[$("typeSel").value];
+  $("valueFields").innerHTML = m.fields.length===2
+    ? `<div class="fields2">` + m.fields.map(f=>`<div><label>${f.label}</label><input type="number" inputmode="decimal" id="f_${f.k}" placeholder="${f.ph}" ${f.step?`step="${f.step}"`:""}></div>`).join("") + `</div>`
+    : m.fields.map(f=>`<label>${f.label} ${m.unit?`(${m.unit})`:""}</label><input type="number" inputmode="decimal" id="f_${f.k}" placeholder="${f.ph}" ${f.step?`step="${f.step}"`:""}>`).join("");
+}
+$("typeSel").addEventListener("change", renderFields);
+$("cancelBtn").onclick = ()=>$("overlay").classList.remove("show");
+$("overlay").onclick = e=>{ if(e.target.id==="overlay") $("overlay").classList.remove("show"); };
+$("saveBtn").onclick = ()=>{
+  const t = $("typeSel").value, m = METRICS[t];
+  const e = {id:Date.now().toString(36), t, d:$("dateInput").value};
+  for(const f of m.fields){
+    const v = parseFloat($("f_"+f.k).value);
+    if(isNaN(v)) return toast("Rellena todos los valores");
+    e[f.k] = v;
+  }
+  entries.push(e); save();
+  $("overlay").classList.remove("show");
+  currentType ? renderDetail(currentType) : renderHome();
+  toast("Guardado ✓");
+};
+
+// ------- eventos -------
+document.addEventListener("click", e=>{
+  const card = e.target.closest(".mcard");
+  if(card) return renderDetail(card.dataset.t);
+  if(e.target.classList.contains("hdel")){
+    if(confirm("¿Eliminar este registro?")){
+      entries = entries.filter(x=>x.id!==e.target.dataset.id);
+      save(); renderDetail(currentType);
+    }
+  }
+});
+$("backBtn").onclick = goHome;
+$("fab").onclick = ()=>openModal(currentType);
+$("helpBtn").onclick = ()=>{ const h=$("helpbox"); h.style.display = h.style.display==="none"?"block":"none"; };
+
+// ------- import / export -------
+function parseLine(line){
+  const p = line.split(",").map(s=>s.trim());
+  if(p.length<3 || !METRICS[p[0]]) return null;
+  const d = p[1].replace(" ","T");
+  if(isNaN(Date.parse(d))) return null;
+  const e = {t:p[0], d:d.length===10?d+"T12:00":d, a:parseFloat(p[2])};
+  if(isNaN(e.a)) return null;
+  if(p[0]==="tension"){ e.b = parseFloat(p[3]); if(isNaN(e.b)) return null; }
+  return e;
+}
+function importText(text){
+  let items = [];
+  try{
+    const j = JSON.parse(text);
+    items = (Array.isArray(j)?j:[]).filter(x=>x && METRICS[x.t] && x.d && x.a!=null);
+  }catch{
+    items = text.split(/\r?\n/).map(parseLine).filter(Boolean);
+  }
+  const existing = new Set(entries.map(e=>e.t+"|"+e.d.slice(0,16)));
+  let added = 0;
+  for(const it of items){
+    const k = it.t+"|"+it.d.slice(0,16);
+    if(existing.has(k)) continue;
+    existing.add(k);
+    entries.push({id:(Date.now()+added).toString(36)+Math.random().toString(36).slice(2,5), ...it});
+    added++;
+  }
+  if(added){ save(); renderHome(); }
+  toast(added ? `Importados ${added} registros ✓` : "Nada nuevo que importar");
+}
+$("importBtn").onclick = async ()=>{
+  let text = "";
+  try{ text = await navigator.clipboard.readText(); }catch{}
+  if(!text) text = prompt("Pega aquí los datos (líneas tipo: tension,2026-07-06 08:30,128,82)") || "";
+  if(text.trim()) importText(text.trim());
+};
+$("exportBtn").onclick = async ()=>{
+  const json = JSON.stringify(entries);
+  try{ await navigator.clipboard.writeText(json); toast("Datos copiados al portapapeles ✓"); }
+  catch{ prompt("Copia tus datos:", json); }
+};
+// importación via URL: #import=<texto codificado>
+if(location.hash.startsWith("#import=")){
+  try{ importText(decodeURIComponent(location.hash.slice(8))); }catch{}
+  history.replaceState(null,"",location.pathname);
+}
+
+let toastTimer;
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove("show"), 2500);
+}
+
+$("todayLabel").textContent = new Date().toLocaleDateString("es-ES",{weekday:"long", day:"numeric", month:"long"});
+renderHome();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+</script>
+</body>
+</html>
